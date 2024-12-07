@@ -1,6 +1,6 @@
 # KNN-Handwritten-Digit-Recognition
 
-> 这是一份大一的 C 语言大作业，利用 KNN 算法实现手写字符识别，同时也提供了 python 的版本
+> 这是一份大一的 C 语言大作业，利用 KNN 算法实现手写字符识别，同时也提供了 Python 的版本
 
 ## 项目介绍
 
@@ -8,21 +8,23 @@
 >
 > 数据集包括了字母和数字
 >
-> 先尝试用 python 实现，然后尝试用 C 语言复现
+> 先尝试用 Python 实现，然后尝试用 C 语言复现
 
 ## 如何运行
 
 1. 将 `数据集.zip` 解压，将 `Img` 文件夹放在代码的同级目录里。
 2. 选取一张手写的要预测的图片，放到 test 文件夹里。
-3. 更改 `bin.py` 或 `bin.ipynb` 的倒数第二行和倒数第三行，将文件路径改为 test 里自己要预测的图片的图片文件名。
-4. 运行 `bin.py` 或 `bin.ipynb`，将图片二值化。
+3. 更改 `bin.py` 或 `bin.ipynb` 的倒数第二行和倒数第三行，将文件路径改为 test 里自己要预测的图片的图片文件名，例如我的图片名叫做 `9.png`。
 
-   ```python
+   ```Python
      # 导入判断图片并转化
    file_in = "test\\9.png"  # 自定义上传图片路径
    file_out_int = "test\\9.txt"  # 自定义保存 txt 文件路径
    handle_char(file_in, width, height, file_out_int)
    ```
+
+4. 运行 `bin.py` 或 `bin.ipynb`，将图片二值化。
+
 5. 运行 `matrix.py` 或 `matrix.ipynb` 或 `matrix.c`，预测手写数字。
 
 ## 文件夹说明
@@ -36,7 +38,7 @@
 
 ## 项目进度
 
-- python 实现
+- Python 实现
 
   - [X] 数据预处理
   - [X] KNN 算法实现
