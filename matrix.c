@@ -1,3 +1,6 @@
+#include <windows.h>
+#include <commdlg.h>
+#include <shlwapi.h> // 包含 PathRemoveFileSpec 函数的头文件
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -6,6 +9,9 @@
 #define VECTOR_SIZE 1024
 #define K 3
 #define LABEL_SIZE 10 // 10数字 + 26大写字母 + 26小写字母
+
+// 全局变量，窗口相关
+HWND hResultTextBox;
 
 void create_labels(char labels[LABEL_SIZE][55])
 {
@@ -38,6 +44,7 @@ void create_labels(char labels[LABEL_SIZE][55])
 
 void read_matrix(const char *file_name, int matrix[32][32])
 {
+    printf("read_matrix 函数 Opening file: %s\n", file_name); // 打印文件路径用于调试
     FILE *file = fopen(file_name, "r");
     if (file == NULL)
     {
@@ -105,15 +112,26 @@ double calculate_distance(double vector1[VECTOR_SIZE], double vector2[VECTOR_SIZ
 
 void get_distances(double distances[], double vector1[VECTOR_SIZE])
 {
+    char working_directory[MAX_PATH];
+    if (GetCurrentDirectory(MAX_PATH, working_directory) == 0)
+    {
+        printf("get_distances 函数 Failed to get current directory\n");
+        exit(1);
+    }
+    // 退回到上一级目录
+    PathRemoveFileSpec(working_directory); // 去掉最后的文件夹部分，回到上一级目录
+
     for (int i = 1; i <= LABEL_SIZE; i++)
     {
         for (int j = 1; j <= 55; j++)
         {
             char file_name[256];
-            snprintf(file_name, sizeof(file_name), "bin\\Sample%03d\\img%03d-%03d.txt", i, i, j);
+            snprintf(file_name, sizeof(file_name), "%s\\bin\\Sample%03d\\img%03d-%03d.txt", working_directory, i, i, j); // 完整路径
+
+            printf("get_distances 函数 Opening file: %s\n", file_name); // 打印完整路径调试
 
             int matrix[32][32];
-            read_matrix(file_name, matrix);
+            read_matrix(file_name, matrix); // 读取训练集文件
 
             double vector2[VECTOR_SIZE];
             matrix_to_vector(matrix, vector2);
@@ -196,27 +214,158 @@ char most_common_label(char top_K_labels[K])
     return most_common;
 }
 
+// 文件选择对话框
+void OpenFileDialog(HWND hwnd)
+{
+    OPENFILENAME ofn;
+    char szFile[260];
+
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = hwnd;
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFilter = "Text Files\0*.TXT\0All Files\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFile[0] = '\0';
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+    if (GetOpenFileName(&ofn) == TRUE)
+    {
+        SetWindowText(hResultTextBox, "Processing...");
+        // 调用主要预测代码
+        printf("OpenFileDialog 函数 Selected file: %s\n", szFile); // 打印选中的测试集文件路径调试
+        int test_matrix[32][32];
+        read_matrix(szFile, test_matrix); // 这里传递的是用户选择的绝对路径
+
+        double vector1[VECTOR_SIZE];
+        matrix_to_vector(test_matrix, vector1);
+
+        double distances[LABEL_SIZE * 55];
+        get_distances(distances, vector1);
+
+        char result[K];
+        char labels[LABEL_SIZE][55];
+        create_labels(labels);
+        get_top_k_labels(distances, labels, result);
+
+        char final_result = most_common_label(result);
+        char result_str[100];
+        sprintf(result_str, "Prediction: %c", final_result);
+
+        SetWindowText(hResultTextBox, result_str);
+    }
+}
+
+// 窗口过程函数
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+    case WM_COMMAND:
+    {
+        if (LOWORD(wParam) == 1)
+        { // 按钮ID
+            OpenFileDialog(hwnd);
+        }
+        break;
+    }
+    case WM_CREATE:
+    {
+        CreateWindow("BUTTON", "Select File", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 50, 50, 200, 40, hwnd, (HMENU)1, (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+        hResultTextBox = CreateWindow("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_READONLY, 50, 100, 400, 200, hwnd, NULL, (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+        break;
+    }
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    default:
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+    return 0;
+}
+
+// int main()
+// {
+//     // system("chcp 65001"); // 设置控制台输出编码为UTF-8
+//     char labels[LABEL_SIZE][55];
+//     create_labels(labels);
+
+//     const char *test_file = "./test/10.txt"; // 请根据实际文件路径修改
+//     int test_matrix[32][32];
+//     read_matrix(test_file, test_matrix);
+
+//     double vector1[VECTOR_SIZE];
+//     matrix_to_vector(test_matrix, vector1);
+
+//     double distances[LABEL_SIZE * 55];
+//     get_distances(distances, vector1);
+
+//     char result[K];
+//     get_top_k_labels(distances, labels, result);
+
+//     char final_result = most_common_label(result);
+//     printf("预测结果: %c\n", final_result);
+
+//     return 0;
+// }
+
+// 主程序
 int main()
 {
-    // system("chcp 65001"); // 设置控制台输出编码为UTF-8
-    char labels[LABEL_SIZE][55];
-    create_labels(labels);
+    system("chcp 65001"); // 设置控制台输出编码为UTF-8
+    // 获取当前程序实例
+    HINSTANCE hInstance = GetModuleHandle(NULL);
 
-    const char *test_file = "./test/10.txt"; // 请根据实际文件路径修改
-    int test_matrix[32][32];
-    read_matrix(test_file, test_matrix);
+    // 初始化WNDCLASS结构体
+    WNDCLASS wc = {0};
 
-    double vector1[VECTOR_SIZE];
-    matrix_to_vector(test_matrix, vector1);
+    wc.lpfnWndProc = WindowProc;      // 窗口处理函数
+    wc.hInstance = hInstance;         // 当前实例
+    wc.lpszClassName = "KNNAppClass"; // 窗口类名
 
-    double distances[LABEL_SIZE * 55];
-    get_distances(distances, vector1);
+    // 注册窗口类
+    if (!RegisterClass(&wc))
+    {
+        MessageBox(NULL, "Window Registration Failed!", "Error", MB_OK | MB_ICONERROR);
+        return 0;
+    }
 
-    char result[K];
-    get_top_k_labels(distances, labels, result);
+    // 创建窗口
+    HWND hwnd = CreateWindowEx(
+        0,                                // 扩展样式
+        "KNNAppClass",                    // 类名
+        "KNN Prediction App",             // 窗口标题
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE, // 窗口样式
+        CW_USEDEFAULT, CW_USEDEFAULT,     // 默认位置
+        500, 400,                         // 窗口大小
+        NULL,                             // 父窗口
+        NULL,                             // 菜单
+        hInstance,                        // 实例句柄
+        NULL                              // 附加数据
+    );
 
-    char final_result = most_common_label(result);
-    printf("预测结果: %c\n", final_result);
+    // 如果窗口创建失败
+    if (hwnd == NULL)
+    {
+        MessageBox(NULL, "Window Creation Failed!", "Error", MB_OK | MB_ICONERROR);
+        return 0;
+    }
 
-    return 0;
+    // 进入消息循环
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        // 翻译消息
+        TranslateMessage(&msg);
+        // 分发消息
+        DispatchMessage(&msg);
+    }
+
+    // 返回退出代码
+    return (int)msg.wParam;
 }
