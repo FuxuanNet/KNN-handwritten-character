@@ -12,6 +12,46 @@
 
 // 全局变量，窗口相关
 HWND hResultTextBox;
+HBITMAP hBackgroundBitmap = NULL; // 背景图片的句柄
+
+// 加载背景图像
+
+void LoadBackgroundImage(HWND hwnd)
+{
+    // 尝试加载图像文件
+    hBackgroundBitmap = (HBITMAP)LoadImage(NULL, "./background.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+    if (hBackgroundBitmap == NULL)
+    {
+        DWORD dwError = GetLastError();
+        char errorMsg[256];
+        // snprintf(errorMsg, sizeof(errorMsg), "Failed to load background image! Error code: %lu", dwError);
+        // MessageBox(hwnd, errorMsg, "Error", MB_OK | MB_ICONERROR);
+    }
+}
+
+// 绘制背景图像
+void DrawBackgroundImage(HWND hwnd, HDC hdc)
+{
+    if (hBackgroundBitmap != NULL)
+    {
+        HDC hMemDC = CreateCompatibleDC(hdc);
+        HBITMAP hOldBitmap = (HBITMAP)SelectObject(hMemDC, hBackgroundBitmap);
+
+        BITMAP bm;
+        GetObject(hBackgroundBitmap, sizeof(bm), &bm);
+
+        // 获取窗口客户区的大小
+        RECT rect;
+        GetClientRect(hwnd, &rect);
+
+        // 将背景图像绘制到窗口客户区
+        StretchBlt(hdc, 0, 0, rect.right, rect.bottom, hMemDC, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+
+        // 清理
+        SelectObject(hMemDC, hOldBitmap);
+        DeleteDC(hMemDC);
+    }
+}
 
 void create_labels(char labels[LABEL_SIZE][55])
 {
@@ -269,7 +309,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
     {
         if (LOWORD(wParam) == 1)
-        { // 按钮ID
+        {
             OpenFileDialog(hwnd);
         }
         break;
@@ -278,6 +318,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
         CreateWindow("BUTTON", "Select File", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 50, 50, 200, 40, hwnd, (HMENU)1, (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
         hResultTextBox = CreateWindow("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_READONLY, 50, 100, 400, 200, hwnd, NULL, (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+        LoadBackgroundImage(hwnd); // 加载背景图像
+        break;
+    }
+    case WM_PAINT:
+    {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+
+        // 绘制背景图像
+        DrawBackgroundImage(hwnd, hdc);
+
+        EndPaint(hwnd, &ps);
         break;
     }
     case WM_DESTROY:
@@ -288,7 +340,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
-
 // int main()
 // {
 //     // system("chcp 65001"); // 设置控制台输出编码为UTF-8

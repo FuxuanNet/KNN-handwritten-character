@@ -22,10 +22,13 @@
    file_out_int = "test\\9.txt"  # 自定义保存 txt 文件路径
    handle_char(file_in, width, height, file_out_int)
    ```
-
 4. 运行 `bin.py` 或 `bin.ipynb`，将图片二值化。
-
 5. 运行 `matrix.py` 或 `matrix.ipynb` 或 `matrix.c`，预测手写数字。
+
+```
+gcc -o matrix matrix.c -lgdi32 -lcomdlg32 -lshlwapi
+
+```
 
 ## 文件夹说明
 
